@@ -9,11 +9,27 @@
   </properties>
 
   <dependencies>
+  
+    <!-- Hadoop Dependencies -->
+    <dependency>
+	  <groupId>org.apache.hadoop</groupId>
+	  <artifactId>hadoop-core</artifactId>
+	  <version>1.2.1</version>
+    </dependency>
+    <dependency>
+	  <groupId>org.apache.hadoop</groupId>
+	  <artifactId>hadoop-common</artifactId>
+	  <version>2.5.1</version>
+    </dependency>
+    
+  
+    <!-- JUnit test dependencies -->  
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.8.1</version>
       <scope>test</scope>
     </dependency>
+    
   </dependencies>
 </project>
