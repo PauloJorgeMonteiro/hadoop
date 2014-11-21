@@ -23,7 +23,7 @@ public class WordCountMapper extends Mapper<LongWritable, Text, Text, IntWritabl
 	  
 	public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
 		String line = value.toString();
-		StringTokenizer itr = new StringTokenizer(line, " \t\n\r\f,.:;?![]`");
+		StringTokenizer itr = new StringTokenizer(line, " \"\t\n\r\f,.:;?![]`");
 	    
 	    while (itr.hasMoreTokens()) {
 	       word.set(itr.nextToken().toLowerCase());

@@ -26,8 +26,6 @@ public class WordCount {
 		String[] folders = new GenericOptionsParser(conf, args).getRemainingArgs();
         Job job = new  Job(conf, "WordCount");
         job.setJarByClass(WordCount.class);
-		
-		
 
 		job.setMapperClass(WordCountMapper.class);
 		job.setReducerClass(WordCountReducer.class);
