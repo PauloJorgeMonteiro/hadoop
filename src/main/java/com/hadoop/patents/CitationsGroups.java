@@ -1,23 +1,19 @@
 package com.hadoop.patents;
 
 import java.io.IOException;
-import java.util.Iterator;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.FileInputFormat;
-import org.apache.hadoop.mapred.FileOutputFormat;
-import org.apache.hadoop.mapred.JobClient;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.KeyValueTextInputFormat;
-import org.apache.hadoop.mapred.MapReduceBase;
-import org.apache.hadoop.mapred.Mapper;
-import org.apache.hadoop.mapred.OutputCollector;
-import org.apache.hadoop.mapred.Reducer;
-import org.apache.hadoop.mapred.Reporter;
-import org.apache.hadoop.mapred.TextOutputFormat;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -30,53 +26,56 @@ import org.apache.hadoop.util.ToolRunner;
  * @author pmonteiro
  *
  */
-public class Patents extends Configured implements Tool {
+public class CitationsGroups extends Configured implements Tool {
 
-	public static class MapClass extends MapReduceBase implements
-			Mapper<Text, Text, Text, Text> {
-		public void map(Text key, Text value,
-				OutputCollector<Text, Text> output, Reporter reporter)
-				throws IOException {
-			output.collect(value, key);
+	public static class MapClass extends Mapper<Text,Text,Text,Text> {
+		public void map(Text key, Text value, Context context) throws IOException, InterruptedException {
+			context.write(value, key);
 		}
 	}
 
-	public static class Reduce extends MapReduceBase implements
-			Reducer<Text, Text, Text, Text> {
-		public void reduce(Text key, Iterator<Text> values,
-			OutputCollector<Text, Text> output,
-			Reporter reporter) throws IOException {
-				String csv = "";
-				while (values.hasNext()) {
-					if (csv.length() > 0) csv += ",";
-					csv += values.next().toString();
-				}
-				output.collect(key, new Text(csv));
+	public static class Reduce extends Reducer<Text,Text,Text,Text> {
+		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+			String csv = "";
+			for (Text value : values) {
+				if (csv.length() > 0) csv += ",";
+				csv += value.toString();
 			}
+			context.write(key, new Text(csv));
+		}
 	}
 
 	public int run(String[] args) throws Exception {
-		Configuration conf = getConf();
-		JobConf job = new JobConf(conf, Patents.class);
-		Path in = new Path(args[0]);
-		Path out = new Path(args[1]);
-		FileInputFormat.setInputPaths(job, in);
-		FileOutputFormat.setOutputPath(job, out);
-		job.setJobName("MyJob");
+		Configuration conf = new Configuration();
+		Job job = new Job(conf, "CitationsGroups");
+		job.setJarByClass(CitationsGroups.class);
+	
 		job.setMapperClass(MapClass.class);
 		job.setReducerClass(Reduce.class);
-		job.setInputFormat(KeyValueTextInputFormat.class);
-		job.setOutputFormat(TextOutputFormat.class);
+		
+		job.setInputFormatClass(KeyValueTextInputFormat.class);
+		job.getConfiguration().set("mapreduce.input.keyvaluelinerecordreader.key.value.separator", ",");
+	//	KeyValueTextInputFormat.addInputPath(job, new Path(args[0]));
+		
+		job.setOutputFormatClass(TextOutputFormat.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
-		job.set("key.value.separator.in.input.line", ",");
-		JobClient.runJob(job);
+		
+		Path in = new Path(args[0]);
+		FileInputFormat.setInputPaths(job, in);
+		
+		Path out = new Path(args[1]);
+		FileSystem fs = FileSystem.get(conf);
+		fs.delete(out, true); 
+		FileOutputFormat.setOutputPath(job, out);
+		
+		System.exit(job.waitForCompletion(true)?0:1);
 		return 0;
 	}
 
 	public static void main(String[] args) throws Exception {
-		String[] parameters = {"assets/patents/input","assets/patents/output"}; 
-		int res = ToolRunner.run(new Configuration(), new Patents(), parameters);
+		String[] parameters = {"assets/citations_groups/input","assets/citations_groups/output"}; 
+		int res = ToolRunner.run(new Configuration(), new CitationsGroups(), parameters);
 		System.exit(res);
 	}
 }
