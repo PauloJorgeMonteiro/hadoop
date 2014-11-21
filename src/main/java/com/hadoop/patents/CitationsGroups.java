@@ -55,7 +55,6 @@ public class CitationsGroups extends Configured implements Tool {
 		
 		job.setInputFormatClass(KeyValueTextInputFormat.class);
 		job.getConfiguration().set("mapreduce.input.keyvaluelinerecordreader.key.value.separator", ",");
-	//	KeyValueTextInputFormat.addInputPath(job, new Path(args[0]));
 		
 		job.setOutputFormatClass(TextOutputFormat.class);
 		job.setOutputKeyClass(Text.class);
