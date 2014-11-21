@@ -14,3 +14,6 @@
 hs_err_pid*
 /target/
 /assets/*/output/
+
+# specific files
+cite75_99.txt
