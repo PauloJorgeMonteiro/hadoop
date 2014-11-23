@@ -28,17 +28,18 @@ import org.apache.hadoop.util.ToolRunner;
  */
 public class CitationsGroups extends Configured implements Tool {
 
-	public static class MapClass extends Mapper<Text,Text,Text,Text> {
+	public static class MapClass extends Mapper<Text, Text, Text, Text> {
 		public void map(Text key, Text value, Context context) throws IOException, InterruptedException {
 			context.write(value, key);
 		}
 	}
 
-	public static class Reduce extends Reducer<Text,Text,Text,Text> {
+	public static class Reduce extends Reducer<Text, Text, Text, Text> {
 		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			String csv = "";
 			for (Text value : values) {
-				if (csv.length() > 0) csv += ",";
+				if (csv.length() > 0)
+					csv += ",";
 				csv += value.toString();
 			}
 			context.write(key, new Text(csv));
@@ -49,31 +50,35 @@ public class CitationsGroups extends Configured implements Tool {
 		Configuration conf = new Configuration();
 		Job job = new Job(conf, "CitationsGroups");
 		job.setJarByClass(CitationsGroups.class);
-	
+
 		job.setMapperClass(MapClass.class);
 		job.setReducerClass(Reduce.class);
-		
+
 		job.setInputFormatClass(KeyValueTextInputFormat.class);
 		job.getConfiguration().set("mapreduce.input.keyvaluelinerecordreader.key.value.separator", ",");
-		
+
 		job.setOutputFormatClass(TextOutputFormat.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
-		
+
 		Path in = new Path(args[0]);
 		FileInputFormat.setInputPaths(job, in);
-		
+
 		Path out = new Path(args[1]);
 		FileSystem fs = FileSystem.get(conf);
-		fs.delete(out, true); 
+		fs.delete(out, true);
 		FileOutputFormat.setOutputPath(job, out);
-		
-		System.exit(job.waitForCompletion(true)?0:1);
+
+		System.exit(job.waitForCompletion(true) ? 0 : 1);
 		return 0;
 	}
 
 	public static void main(String[] args) throws Exception {
-		String[] parameters = {"assets/citations_groups/input","assets/citations_groups/output"}; 
+
+		String[] parameters = {"assets/patents/input","assets/patents/output"}; 
+		if (args != null && args.length == 2) {
+			parameters = args;
+		}
 		int res = ToolRunner.run(new Configuration(), new CitationsGroups(), parameters);
 		System.exit(res);
 	}
