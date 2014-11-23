@@ -20,8 +20,8 @@ import org.apache.hadoop.util.ToolRunner;
 /**
  * To Run this example please download the following files: <br>
  * http://www.nber.org/patents/acite75_99.zip (citations) <br>
- * http://www.nber.org/patents/apat63_99.zip (description) <br>
- * <br>
+ * http://www.nber.org/patents/apat63_99.zip (description) <br> <br>
+ * For each patent, we want to find and group the patents that cite it <br>
  * 
  * @author pmonteiro
  *
