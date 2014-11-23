@@ -12,7 +12,11 @@ import org.apache.hadoop.util.GenericOptionsParser;
 
 /**
  * 
- * To run from within Eclipse in a stand-alone mode, provide the following arguments: <br> 
+ * This Hadoop program will count the most used words in the Martin Luther King
+ * speech (http://www.americanrhetoric.com/speeches/mlkihaveadream.htm) <br>
+ * 
+ * To run from within Eclipse in a stand-alone mode, provide the following
+ * arguments: <br>
  * assets/wordcount/input assets/wordcount/output <br>
  * 
  * @author pmonteiro
@@ -21,11 +25,16 @@ import org.apache.hadoop.util.GenericOptionsParser;
 public class WordCount {
 
 	public static void main(String[] args) throws Exception {
-		
+
+		String[] parameters = { "assets/mlk_speech/input", "assets/mlk_speech/output" };
+		if (args != null && args.length == 2) {
+			parameters = args;
+		}
+
 		Configuration conf = new Configuration();
-		String[] folders = new GenericOptionsParser(conf, args).getRemainingArgs();
-        Job job = new  Job(conf, "WordCount");
-        job.setJarByClass(WordCount.class);
+		String[] folders = new GenericOptionsParser(conf, parameters).getRemainingArgs();
+		Job job = new Job(conf, "WordCount");
+		job.setJarByClass(WordCount.class);
 
 		job.setMapperClass(WordCountMapper.class);
 		job.setReducerClass(WordCountReducer.class);
@@ -35,7 +44,7 @@ public class WordCount {
 
 		FileInputFormat.setInputPaths(job, new Path(folders[0]));
 		FileSystem fs = FileSystem.get(conf);
-		fs.delete(new Path(args[1]), true); 
+		fs.delete(new Path(parameters[1]), true);
 		FileOutputFormat.setOutputPath(job, new Path(folders[1]));
 
 		if (!job.waitForCompletion(true))
