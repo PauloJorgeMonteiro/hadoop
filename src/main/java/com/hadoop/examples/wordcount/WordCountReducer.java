@@ -1,4 +1,4 @@
-package com.hadoop.wordcount;
+package com.hadoop.examples.wordcount;
 import java.io.IOException;
 
 import org.apache.hadoop.io.IntWritable;

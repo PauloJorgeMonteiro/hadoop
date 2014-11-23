@@ -1,14 +1,11 @@
-package com.hadoop.patents;
+package com.hadoop.examples.patents;
 
 import java.io.IOException;
-import java.util.Iterator;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -25,49 +22,36 @@ import org.apache.hadoop.util.ToolRunner;
  * http://www.nber.org/patents/acite75_99.zip (citations) <br>
  * http://www.nber.org/patents/apat63_99.zip (description) <br>
  * <br>
- * For the patent citation data, we may want the number of citations a patent
- * has received.<br>
- * (<i>Lam, Chuck. Hadoop in Action. Greenwich, CT: Manning Publications,
- * 2011)</i> <br>
+ * For each patent, we want to find and group the patents that cite it (<i>Lam,
+ * Chuck. Hadoop in Action. Greenwich, CT: Manning Publications, 2011)</i> <br>
  * 
  * @author pmonteiro
  *
  */
-public class CitationsCount extends Configured implements Tool {
+public class CitationsGroups extends Configured implements Tool {
 
-	public static class MapClass extends Mapper<Text, Text, IntWritable, IntWritable> {
-		private IntWritable keyVal = new IntWritable();
-		private IntWritable one = new IntWritable(1);
-
+	public static class MapClass extends Mapper<Text, Text, Text, Text> {
 		public void map(Text key, Text value, Context context) throws IOException, InterruptedException {
-			if (StringUtils.isNumeric(value.toString())) {
-				keyVal.set(Integer.parseInt(value.toString()));
-				context.write(keyVal, one);
-			}
+			context.write(value, key);
 		}
 	}
 
-	public static class Reduce extends Reducer<IntWritable, IntWritable, IntWritable, IntWritable> {
-		private IntWritable counter = new IntWritable(0);
-
-		public void reduce(IntWritable key, Iterable<IntWritable> values, Context context) throws IOException,
-				InterruptedException {
-
-			int count = 0;
-			for (IntWritable val : values) {
-				  count += val.get();
+	public static class Reduce extends Reducer<Text, Text, Text, Text> {
+		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+			String csv = "";
+			for (Text value : values) {
+				if (csv.length() > 0)
+					csv += ",";
+				csv += value.toString();
 			}
-			if (count > 100) {
-				counter.set(count);
-				context.write(key, counter);
-			}
+			context.write(key, new Text(csv));
 		}
 	}
 
 	public int run(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		Job job = new Job(conf, "CitationsCount");
-		job.setJarByClass(CitationsCount.class);
+		Job job = new Job(conf, "CitationsGroups");
+		job.setJarByClass(CitationsGroups.class);
 
 		job.setMapperClass(MapClass.class);
 		job.setReducerClass(Reduce.class);
@@ -76,8 +60,8 @@ public class CitationsCount extends Configured implements Tool {
 		job.getConfiguration().set("mapreduce.input.keyvaluelinerecordreader.key.value.separator", ",");
 
 		job.setOutputFormatClass(TextOutputFormat.class);
-		job.setOutputKeyClass(IntWritable.class);
-		job.setOutputValueClass(IntWritable.class);
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(Text.class);
 
 		Path in = new Path(args[0]);
 		FileInputFormat.setInputPaths(job, in);
@@ -97,7 +81,7 @@ public class CitationsCount extends Configured implements Tool {
 		if (args != null && args.length == 2) {
 			parameters = args;
 		}
-		int res = ToolRunner.run(new Configuration(), new CitationsCount(), parameters);
+		int res = ToolRunner.run(new Configuration(), new CitationsGroups(), parameters);
 		System.exit(res);
 	}
 }
