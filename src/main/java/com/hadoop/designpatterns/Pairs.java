@@ -45,9 +45,14 @@ public class Pairs extends Configured implements Tool {
 		public void map(LongWritable lineNumber, Text line, Context context) throws IOException, InterruptedException {
 
 			int neighbours = context.getConfiguration().getInt(NEIGHBOURS, NEIGHBOURS_DEFAULT_VALUE);
-			String[] words = line.toString().toLowerCase().split("\\s+");
+			String[] words = line.toString().toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+");
 
 			for (int i = 0; i < words.length; i++) {
+
+				if (words[i].length() == 0) {
+					continue;
+				}
+				
 				for (int j = i - neighbours; j < i + neighbours + 1; j++) {
 
 					if (j >= words.length) {
@@ -74,10 +79,9 @@ public class Pairs extends Configured implements Tool {
 			for (IntWritable val : values) {
 				count += val.get();
 			}
-			if (count >= 10 ) {
-				counter.set(count);
-				context.write(key, counter);
-			}
+			
+			counter.set(count);
+			context.write(key, counter);
 		}
 	}
 
