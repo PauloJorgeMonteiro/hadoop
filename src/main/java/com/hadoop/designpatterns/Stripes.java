@@ -9,7 +9,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Job;
@@ -19,6 +18,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.apache.log4j.Logger;
 
 /**
  * <b>Implementation of the Hadoop 'Stripes' design pattern</b><br>
@@ -43,13 +43,13 @@ public class Stripes extends Configured implements Tool {
 
 	private static final String NEIGHBOURS = "neighbours";
 	private static final int NEIGHBOURS_DEFAULT_VALUE = 1;
+	static Logger log = Logger.getLogger(Stripes.class.getName());
 
-	public static class MapClass extends Mapper<LongWritable, Text, Text, MapWritable> {
+	public static class MapClass extends Mapper<LongWritable, Text, Text, StripesMapWritable> {
 
 		private Text term = new Text();
-		private Text neighbour = new Text();
 		private IntWritable neighbourCount = new IntWritable(0);
-		private MapWritable associativeMap = new MapWritable();
+		private StripesMapWritable associativeMap = new StripesMapWritable();
 		private IntWritable one = new IntWritable(1);
 
 		public void map(LongWritable lineNumber, Text line, Context context) throws IOException, InterruptedException {
@@ -58,13 +58,11 @@ public class Stripes extends Configured implements Tool {
 			String[] words = line.toString().toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+");
 
 			for (int i = 0; i < words.length; i++) {
-				associativeMap.clear();
 
 				if (words[i].length() == 0) {
 					continue;
 				}
 
-				term.set(words[i]);
 				for (int j = i - neighbours; j < i + neighbours + 1; j++) {
 
 					if (j >= words.length) {
@@ -74,6 +72,7 @@ public class Stripes extends Configured implements Tool {
 					if (j == i || j < 0) {
 						continue;
 					}
+					Text neighbour = new Text();
 					neighbour.set(words[j]);
 
 					if (associativeMap.containsKey(neighbour)) {
@@ -84,26 +83,29 @@ public class Stripes extends Configured implements Tool {
 						associativeMap.put(neighbour, one);
 					}
 				}
+				term.set(words[i]);
 				context.write(term, associativeMap);
+				associativeMap.clear();
 			}
 		}
 	}
 
-	public static class Reduce extends Reducer<Text, MapWritable, Text, MapWritable> {
-		private MapWritable associativeResult = new MapWritable();
+	public static class Reduce extends Reducer<Text, StripesMapWritable, Text, StripesMapWritable> {
+		private StripesMapWritable associativeResult = new StripesMapWritable();
 
-		public void reduce(Text term, Iterable<MapWritable> associativeMaps, Context context) throws IOException,
-				InterruptedException {
+		public void reduce(Text term, Iterable<StripesMapWritable> associativeMaps, Context context)
+				throws IOException, InterruptedException {
 
 			associativeResult.clear();
-			for (MapWritable associativeMap : associativeMaps) {
+			for (StripesMapWritable associativeMap : associativeMaps) {
 				sumKeyValues(term, associativeMap);
 			}
 
 			context.write(term, associativeResult);
+
 		}
 
-		private void sumKeyValues(Text term, MapWritable associativeMap) {
+		private void sumKeyValues(Text term, StripesMapWritable associativeMap) {
 			Set<Writable> keys = associativeMap.keySet();
 			for (Writable key : keys) {
 				IntWritable count = (IntWritable) associativeMap.get(key);
@@ -131,7 +133,7 @@ public class Stripes extends Configured implements Tool {
 		job.setReducerClass(Reduce.class);
 
 		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(MapWritable.class);
+		job.setOutputValueClass(StripesMapWritable.class);
 
 		Path in = new Path(args[0]);
 		FileInputFormat.setInputPaths(job, in);
