@@ -52,7 +52,7 @@ public class Pairs extends Configured implements Tool {
 				if (words[i].length() == 0) {
 					continue;
 				}
-				
+
 				for (int j = i - neighbours; j < i + neighbours + 1; j++) {
 
 					if (j >= words.length) {
@@ -79,9 +79,10 @@ public class Pairs extends Configured implements Tool {
 			for (IntWritable val : values) {
 				count += val.get();
 			}
-			
-			counter.set(count);
-			context.write(key, counter);
+//			if (count > 5) {
+				counter.set(count);
+				context.write(key, counter);
+			// }
 		}
 	}
 
