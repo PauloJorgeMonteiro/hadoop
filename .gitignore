@@ -16,7 +16,7 @@ hs_err_pid*
 /assets/*/output/
 
 # log files
-log4j-hadoop.log
+log4j-hadoop.log*
 
 # specific files
 cite75_99.txt
