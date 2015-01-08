@@ -1,0 +1,13 @@
+# Directed graph (each unordered pair of nodes is saved once): soc-Epinions1.txt 
+# Directed Epinions social network
+# Nodes: 75879 Edges: 508837
+# FromNodeId	ToNodeId
+1	2
+1	4
+2	3
+2	5
+3	4
+4	5
+5	1
+5	2
+5	3
