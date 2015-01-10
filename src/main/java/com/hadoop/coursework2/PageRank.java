@@ -40,7 +40,6 @@ import com.hadoop.coursework2.util.MultiLineInputFormat;
  */
 public class PageRank extends Configured implements Tool {
 
-	private BigDecimal dampingFactor = new BigDecimal(0.85);
 
 	public static class MapClass extends Mapper<LongWritable, Text, Text, NodeWritable> {
 
@@ -61,6 +60,8 @@ public class PageRank extends Configured implements Tool {
 	}
 
 	public static class Reduce extends Reducer<Text, NodeWritable, Text, DoubleWritable> {
+		private final static BigDecimal DAMPING_FACTOR = new BigDecimal(0.85);
+		
 		private static Logger _log = Logger.getLogger(Reduce.class.getName());
 		private Map<Text, List<NodeWritable>> nodesMap = new HashMap<>();
 		private DoubleWritable value = new DoubleWritable(0);
@@ -82,24 +83,45 @@ public class PageRank extends Configured implements Tool {
 		@Override
 		protected void cleanup(Context context) throws IOException, InterruptedException {
 			for (Text key : nodesMap.keySet()) {
-				value.set(calculateNodePageRank(nodesMap.get(key)));
+				value.set(calculateCompletePageRank(nodesMap.get(key)));
 				_log.debug("Emiting: " + key + " => " + value);
 				context.write(key, value);
 			}
 		}
 
 		/**
-		 * Calculates the current <b>PageRank</b>
+		 * Calculates the simplified <b>PageRank</b> for a given node
 		 * 
 		 * @param nodes
 		 * @return PageRank
 		 */
-		private double calculateNodePageRank(List<NodeWritable> nodes) {
+		private double calculateSimplePageRank(List<NodeWritable> nodes) {
 			double totalPageRank = 0.0;
 			for (NodeWritable node : nodes) {
 				totalPageRank += node.getPageRank();
 			}
 			return BigDecimal.valueOf(totalPageRank).divide(BigDecimal.valueOf(totalNodes), 5, RoundingMode.HALF_UP).doubleValue();
+		}
+		
+		/**
+		 * Calculates the complete <b>PageRank</b> for a given node. <br>
+		 * This method makes use of the damping factor.<br>
+		 * The equations is: <i>(1-d)/N + d (PR(T1)/C(T1) + ... + PR(Tn)/C(Tn))</i>. <br>
+		 * As seen in Wikipedia: http://en.wikipedia.org/wiki/PageRank#Damping_factor
+		 * 
+		 * @param nodes
+		 * @return PageRank
+		 */
+		public double calculateCompletePageRank(List<NodeWritable> nodes) {
+			BigDecimal firstPart = BigDecimal.valueOf(1).min(DAMPING_FACTOR).divide(BigDecimal.valueOf(totalNodes), 5, RoundingMode.HALF_UP);
+			
+			double linksPageRank = 0.0;
+			for (NodeWritable node : nodes) {
+				linksPageRank += node.getPageRank();
+			}
+			BigDecimal secondPart = DAMPING_FACTOR.multiply(BigDecimal.valueOf(linksPageRank));
+			
+			return firstPart.add(secondPart).divide(BigDecimal.valueOf(totalNodes), 5, RoundingMode.HALF_UP).doubleValue();
 		}
 
 	}
