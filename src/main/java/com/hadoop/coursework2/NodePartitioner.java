@@ -3,6 +3,8 @@ package com.hadoop.coursework2;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Partitioner;
 
+import com.hadoop.coursework2.model.NodeWritable;
+
 
 /**
  * Useful for Hadoop solutions that involves Composite Keys <br>
@@ -16,10 +18,10 @@ import org.apache.hadoop.mapreduce.Partitioner;
  * @since 07-01-2015
  *
  */
-public class NodePartitioner extends Partitioner<Text, Node> {
+public class NodePartitioner extends Partitioner<Text, NodeWritable> {
 
 	@Override
-	public int getPartition(Text key, Node value, int numReduceTasks) {
+	public int getPartition(Text key, NodeWritable value, int numReduceTasks) {
 		return key.toString().hashCode() % numReduceTasks;
 	}
 

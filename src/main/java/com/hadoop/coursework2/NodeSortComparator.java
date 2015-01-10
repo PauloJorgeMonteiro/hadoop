@@ -4,6 +4,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableComparator;
 
+import com.hadoop.coursework2.model.NodeWritable;
+
 /**
  * 
  * To guarantee that all of them composite keys will come in the same input
@@ -16,7 +18,7 @@ import org.apache.hadoop.io.WritableComparator;
 public class NodeSortComparator extends WritableComparator {
 
 	protected NodeSortComparator() {
-		super(Node.class, true);
+		super(NodeWritable.class, true);
 	}
 
 //	@Override

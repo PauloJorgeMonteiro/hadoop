@@ -3,6 +3,8 @@ package com.hadoop.coursework2;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableComparator;
 
+import com.hadoop.coursework2.model.NodeWritable;
+
 /**
  * 
  * @author pmonteiro
@@ -11,14 +13,14 @@ import org.apache.hadoop.io.WritableComparator;
 public class NodeGroupingComparator extends WritableComparator {
 
 	protected NodeGroupingComparator() {
-		super(Node.class, true);
+		super(NodeWritable.class, true);
 	}
 
 	@Override
 	@SuppressWarnings("rawtypes")
 	public int compare(WritableComparable w1, WritableComparable w2) {
-		Node k1 = (Node) w1;
-		Node k2 = (Node) w2;
+		NodeWritable k1 = (NodeWritable) w1;
+		NodeWritable k2 = (NodeWritable) w2;
 
 		return k1.getName().compareTo(k2.getName());
 	}

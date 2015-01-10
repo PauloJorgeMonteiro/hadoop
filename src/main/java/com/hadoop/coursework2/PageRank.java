@@ -7,10 +7,10 @@ import static com.hadoop.coursework2.util.MultiLineRecordReader.WITH_VALUE;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Queue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -28,7 +28,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Logger;
 
-import com.hadoop.coursework1.Pair;
+import com.hadoop.coursework2.model.NodeWritable;
 import com.hadoop.coursework2.util.MultiLineInputFormat;
 
 /**
@@ -42,7 +42,7 @@ public class PageRank extends Configured implements Tool {
 
 	private BigDecimal dampingFactor = new BigDecimal(0.85);
 
-	public static class MapClass extends Mapper<LongWritable, Text, Text, Node> {
+	public static class MapClass extends Mapper<LongWritable, Text, Text, NodeWritable> {
 
 		private static Logger _log = Logger.getLogger(MapClass.class.getName());
 		Text key = new Text();
@@ -52,63 +52,54 @@ public class PageRank extends Configured implements Tool {
 			String[] lines = multiLine.toString().split(SEMICOLON);
 			for (String line : lines) {
 				String[] nodes = line.toString().split(TAB);
-				Node node = new Node(nodes[1]);
-				key.set(node.getName());
-				Node fromNode = new Node(nodes[0], new BigDecimal(1).divide(BigDecimal.valueOf(lines.length), 5,
-						RoundingMode.HALF_UP));
-				node.getFromEdges().add(fromNode);
+				NodeWritable fromNode = new NodeWritable(nodes[0], nodes[1], lines.length);
+				key.set(fromNode.getTo());
 				_log.debug("Emiting: " + key + WITH_VALUE + fromNode);
 				context.write(key, fromNode);
 			}
 		}
 	}
 
-	public static class Combiner extends Reducer<Text, Node, Text, Node> {
-		private static Logger _log = Logger.getLogger(Combiner.class.getName());
-
-		public void reduce(Text key, Iterable<Node> nodes, Context context) throws IOException, InterruptedException {
-
-			Node totalNodes = new Node(key.toString());
-			StringBuilder sb = new StringBuilder();
-			for (Node n : nodes) {
-				totalNodes.setRank(totalNodes.getRank().add(n.getRank()));
-				totalNodes.getFromEdges().add(n);
-			}
-
-			_log.debug("Emiting: " + key + WITH_VALUE + totalNodes);
-			context.write(key, totalNodes);
-		}
-	}
-
-	public static class Reduce extends Reducer<Text, Node, Text, DoubleWritable> {
+	public static class Reduce extends Reducer<Text, NodeWritable, Text, DoubleWritable> {
 		private static Logger _log = Logger.getLogger(Reduce.class.getName());
-		private Queue<Pair> queue = new PriorityQueue<>();
-		private Map<Text, Node> nodesMap = new HashMap<>();
+		private Map<Text, List<NodeWritable>> nodesMap = new HashMap<>();
 		private DoubleWritable value = new DoubleWritable(0);
 		private Integer totalNodes = 0;
 
-		public void reduce(Text key, Iterable<Node> values, Context context) throws IOException,
+		public void reduce(Text key, Iterable<NodeWritable> values, Context context) throws IOException,
 				InterruptedException {
-			
-			// TODO: Still need to sum all the nodes that have not been captured by the Combiner.
-			//       This might need a new Writable structure. 
-			
+
 			totalNodes++;
 			
-			for (Node node : values) {
-				Text text = new Text(key.toString());
-				Node value = new Node(key.toString(), node.getRank(), node.getFromEdges());
-				nodesMap.put(text, value);
+			List<NodeWritable> nodes = new ArrayList<>();
+			for (NodeWritable node : values) {
+				nodes.add(new NodeWritable(node.getFrom(), node.getTo(), node.getTotalLinks(), node.getPreviousPageRank()));
 			}
+			nodesMap.put(new Text(key), nodes);
+
 		}
 
 		@Override
 		protected void cleanup(Context context) throws IOException, InterruptedException {
 			for (Text key : nodesMap.keySet()) {
-				value.set(nodesMap.get(key).getRank().divide(BigDecimal.valueOf(totalNodes), 5, RoundingMode.HALF_UP).doubleValue());
+				value.set(calculateNodePageRank(nodesMap.get(key)));
 				_log.debug("Emiting: " + key + " => " + value);
 				context.write(key, value);
 			}
+		}
+
+		/**
+		 * Calculates the current <b>PageRank</b>
+		 * 
+		 * @param nodes
+		 * @return PageRank
+		 */
+		private double calculateNodePageRank(List<NodeWritable> nodes) {
+			double totalPageRank = 0.0;
+			for (NodeWritable node : nodes) {
+				totalPageRank += node.getPageRank();
+			}
+			return BigDecimal.valueOf(totalPageRank).divide(BigDecimal.valueOf(totalNodes), 5, RoundingMode.HALF_UP).doubleValue();
 		}
 
 	}
@@ -121,11 +112,11 @@ public class PageRank extends Configured implements Tool {
 		job.setJarByClass(PageRank.class);
 
 		job.setMapperClass(MapClass.class);
-		job.setCombinerClass(Combiner.class);
+//		job.setCombinerClass(Combiner.class);
 		job.setReducerClass(Reduce.class);
 
 		job.setMapOutputKeyClass(Text.class);
-		job.setMapOutputValueClass(Node.class);
+		job.setMapOutputValueClass(NodeWritable.class);
 		// job.setPartitionerClass(NodePartitioner.class);
 		// job.setSortComparatorClass(NodeSortComparator.class);
 		// job.setGroupingComparatorClass(NodeGroupingComparator.class);

@@ -1,73 +1,103 @@
-package com.hadoop.coursework2;
+package com.hadoop.coursework2.model;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import java.math.RoundingMode;
 
 import lombok.Data;
 
 import org.apache.hadoop.io.WritableComparable;
 
-public @Data class Node implements WritableComparable<Node> {
+public @Data class NodeWritable implements WritableComparable<NodeWritable> {
+	
+	public static Double INITIAL_PAGE_RANK = new Double(1.0);
 
-	private String name;
-	private BigDecimal rank = new BigDecimal(0.0);
-	private List<Node> fromEdges = new ArrayList<Node>();
+	private String from;
+	private String to;
+	private Double previousPageRank = new Double(0.0);
+	private int totalLinks;
 
-	public Node() {
+	public NodeWritable() {
 		super();
 	}
 
-	public Node(String name) {
-		this.name = name;
+	public NodeWritable(String from, String to) {
+		this.from = from;
+		this.to = to;
 	}
 
-	public Node(String name, BigDecimal rank) {
-		this.name = name;
-		this.rank = rank;
+	public NodeWritable(String from, String to, int totalLinks) {
+		this.from = from;
+		this.to = to;
+		this.totalLinks = totalLinks;
 	}
 
-	public Node(String name, BigDecimal rank, List<Node> fromEdges) {
-		this.name = name;
-		this.rank = rank;
-		this.fromEdges = fromEdges;
+	public NodeWritable(String from, String to,  int totalLinks, Double previousPageRank) {
+		this.from = from;
+		this.to = to;
+		this.totalLinks = totalLinks;
+		this.previousPageRank = previousPageRank;
 	}
-
-//	public BigDecimal getRank() {
-//		for (Node node : fromEdges) {
-//			rank.add(node.getRank());
-//		}
-//		return rank;
-//	}
+	
+	public Double getPageRank(){
+		if (previousPageRank != 0) {
+			return BigDecimal.valueOf(previousPageRank).divide(BigDecimal.valueOf(totalLinks), 5,
+					RoundingMode.HALF_UP).doubleValue();
+		}
+		return BigDecimal.valueOf(INITIAL_PAGE_RANK).divide(BigDecimal.valueOf(totalLinks), 5,
+				RoundingMode.HALF_UP).doubleValue();
+	}
 
 	@Override
 	public void readFields(DataInput in) throws IOException {
-		this.name = in.readUTF();
-		this.rank = BigDecimal.valueOf(in.readDouble());
-//		int fromEdgesSize = in.readInt();
-//		fromEdges.clear();
-//		for (int i = 0; i < fromEdgesSize; i++) {
-//			fromEdges.add(new Node(in.readUTF(), BigDecimal.valueOf(in.readDouble()), null));
-//		}
+		this.from = in.readUTF();
+		this.to = in.readUTF();
+		this.totalLinks = in.readInt();
+		this.previousPageRank = in.readDouble();
 	}
 
 	@Override
 	public void write(DataOutput out) throws IOException {
-		out.writeUTF(name);
-		out.writeDouble(rank.doubleValue());
-//		out.writeInt(fromEdges.size());
-//		for (Node node : fromEdges) {
-//			out.writeUTF(node.getName());
-//			out.writeDouble(node.getRank().doubleValue());
-//		}
+		out.writeUTF(from);
+		out.writeUTF(to);
+		out.writeInt(totalLinks);
+		out.writeDouble(previousPageRank.doubleValue());
 	}
 
 	@Override
-	public int compareTo(Node arg0) {
-		return name.compareTo(arg0.getName());
+	public int compareTo(NodeWritable node) {
+		return this.from.compareTo(node.getFrom());
 	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof NodeWritable))
+			return false;
+		NodeWritable other = (NodeWritable) obj;
+		if (from == null) {
+			if (other.from != null)
+				return false;
+		} else if (!from.equals(other.from))
+			return false;
+		if (totalLinks != other.totalLinks)
+			return false;
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((from == null) ? 0 : from.hashCode());
+		result = prime * result + totalLinks;
+		return result;
+	}
+
 
 }
