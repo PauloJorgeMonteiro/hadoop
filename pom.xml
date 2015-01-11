@@ -11,11 +11,33 @@
   <dependencies>
   
     <!-- Hadoop Dependencies -->
+    <!-- 
     <dependency>
 	  <groupId>org.apache.hadoop</groupId>
 	  <artifactId>hadoop-core</artifactId>
 	  <version>1.2.1</version>
     </dependency>
+    -->
+    
+    
+    <dependency>
+	  <groupId>org.apache.hadoop</groupId>
+	  <artifactId>hadoop-hdfs</artifactId>
+	  <version>2.5.1</version>
+    </dependency>
+    
+    <dependency>
+	  <groupId>org.apache.hadoop</groupId>
+	  <artifactId>hadoop-client</artifactId>
+	  <version>2.5.1</version>
+    </dependency>
+    
+    <dependency>
+	  <groupId>org.apache.hadoop</groupId>
+	  <artifactId>hadoop-mapreduce-client-core</artifactId>
+	  <version>2.5.1</version>
+    </dependency>
+    
     <dependency>
 	  <groupId>org.apache.hadoop</groupId>
 	  <artifactId>hadoop-common</artifactId>
