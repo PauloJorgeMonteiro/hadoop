@@ -190,6 +190,7 @@ public class StripesApproach extends Configured implements Tool {
 	public int run(String[] args) throws Exception {
 		Configuration conf = new Configuration();
 
+		@SuppressWarnings("deprecation")
 		Job job = new Job(conf, "Coursework 1 - Stripes Approach");
 		job.setInputFormatClass(ParagrapghInputFormat.class);
 		job.setJarByClass(StripesApproach.class);

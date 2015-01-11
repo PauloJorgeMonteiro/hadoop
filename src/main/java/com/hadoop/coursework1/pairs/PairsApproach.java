@@ -167,6 +167,7 @@ public class PairsApproach extends Configured implements Tool {
 
 	public int run(String[] args) throws Exception {
 		Configuration conf = new Configuration();
+		@SuppressWarnings("deprecation")
 		Job job = new Job(conf, "Coursework 1 - Pairs Approach");
 		job.setInputFormatClass(ParagrapghInputFormat.class);
 		job.setJarByClass(PairsApproach.class);
