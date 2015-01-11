@@ -41,6 +41,8 @@ import com.hadoop.coursework2.util.MultiLineInputFormat;
  */
 public class PageRank extends Configured implements Tool {
 
+	private static final String REDUCER_PARAM = "-r";
+	
 	public static class MapClass extends Mapper<LongWritable, Text, Text, NodeWritable> {
 
 		private static Logger _log = Logger.getLogger(MapClass.class.getName());
@@ -148,7 +150,6 @@ public class PageRank extends Configured implements Tool {
 		Configuration conf = new Configuration();
 		Job job = new Job(conf, "Coursework 2 - PageRank");
 		job.setInputFormatClass(MultiLineInputFormat.class);
-
 		job.setJarByClass(PageRank.class);
 
 		job.setMapperClass(MapClass.class);
@@ -157,6 +158,29 @@ public class PageRank extends Configured implements Tool {
 		job.setMapOutputKeyClass(Text.class);
 		job.setMapOutputValueClass(NodeWritable.class);
 
+		List<String> other_args = new ArrayList<String>();
+		for (int i = 0; i < args.length; ++i) {
+			try {
+				if (REDUCER_PARAM.equals(args[i])) {
+					job.setNumReduceTasks(Integer.parseInt(args[++i]));
+				} else {
+					other_args.add(args[i]);
+				}
+			} catch (NumberFormatException except) {
+				System.out.println("ERROR: Integer expected instead of " + args[i]);
+				return printUsage();
+			} catch (ArrayIndexOutOfBoundsException except) {
+				System.out.println("ERROR: Required parameter missing from " + args[i - 1]);
+				return printUsage();
+			}
+		}
+		// Make sure there are exactly 2 parameters left.
+		if (other_args.size() != 2) {
+			System.out.println("ERROR: Wrong number of parameters: " + other_args.size() + " instead of 2.");
+			return printUsage();
+		}
+		
+		
 		Path in = new Path(args[0]);
 		FileInputFormat.setInputPaths(job, in);
 
@@ -169,13 +193,19 @@ public class PageRank extends Configured implements Tool {
 		return 0;
 	}
 
+	private static int printUsage() {
+		System.out.println("stripesApproach [-r <reduces>] <input> <output>");
+		ToolRunner.printGenericCommandUsage(System.out);
+		return -1;
+	}
+	
 	public static void main(String[] args) throws Exception {
 //		 String[] parameters = { "assets/pagerank/input/pagerank02.txt", "assets/pagerank/output" };
 //		String[] parameters = { "assets/pagerank/input/pagerank03.txt", "assets/pagerank/output" };
 //		String[] parameters = { "assets/pagerank/input/pagerank04.txt", "assets/pagerank/output" };
 //		String[] parameters = { "assets/pagerank/input/pagerank05.txt", "assets/pagerank/output" };
 		 String[] parameters = { "assets/epinions_social_network/input", "assets/epinions_social_network/output" };
-		if (args != null && args.length == 2) {
+		 if (args != null && (args.length == 2 || args.length == 3)) {
 			parameters = args;
 		}
 		int res = ToolRunner.run(new Configuration(), new PageRank(), parameters);

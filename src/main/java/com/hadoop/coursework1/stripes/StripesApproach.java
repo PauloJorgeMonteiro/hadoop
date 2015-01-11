@@ -3,7 +3,9 @@ package com.hadoop.coursework1.stripes;
 import static com.hadoop.coursework1.stripes.StripeWritable.TOTAL;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
@@ -46,10 +48,11 @@ import com.hadoop.coursework1.util.ParagrapghInputFormat;
  */
 public class StripesApproach extends Configured implements Tool {
 
+	private static final String REDUCER_PARAM = "-r";
 	private static final String KEYWORD = "KEYWORD";
 	private static final String KEYWORD_DEFAULT_VALUE = "for";
 	private static final String NEIGHBOURS = "neighbours";
-	private static final int NEIGHBOURS_DEFAULT_VALUE = 1;
+	private static final String NEIGHBOURS_DEFAULT_VALUE = "1";
 
 	public static class MapClass extends Mapper<LongWritable, Text, Text, StripeWritable> {
 
@@ -58,9 +61,9 @@ public class StripesApproach extends Configured implements Tool {
 
 		public void map(LongWritable lineNumber, Text line, Context context) throws IOException, InterruptedException {
 
-			int neighbours = context.getConfiguration().getInt(NEIGHBOURS, NEIGHBOURS_DEFAULT_VALUE);
-			String[] words = line.toString().toLowerCase()
-					.replaceAll("[^a-zA-Z0-9 \\-]", "").replaceAll("-", " ").split("\\s+");
+			int neighbours = context.getConfiguration().getInt(NEIGHBOURS, Integer.valueOf(NEIGHBOURS_DEFAULT_VALUE));
+			String[] words = line.toString().toLowerCase().replaceAll("[^a-zA-Z0-9 \\-]", "").replaceAll("-", " ")
+					.split("\\s+");
 
 			for (int i = 0; i < words.length; i++) {
 
@@ -74,7 +77,8 @@ public class StripesApproach extends Configured implements Tool {
 
 				if (stripes.containsKey(words[i])) {
 					StripeWritable stripe = stripes.get(words[i]);
-					stripes.put(words[i], stripe.add(words[i], words[i + neighbours], 1 + stripe.get(words[i + neighbours])));
+					stripes.put(words[i],
+							stripe.add(words[i], words[i + neighbours], 1 + stripe.get(words[i + neighbours])));
 				} else {
 					stripes.put(words[i], new StripeWritable().add(words[i], words[i + neighbours], 1));
 				}
@@ -121,8 +125,8 @@ public class StripesApproach extends Configured implements Tool {
 				}
 			}
 		}
-		
-		private void log(Context context, Text term,  StripeWritable stripeFreq) {
+
+		private void log(Context context, Text term, StripeWritable stripeFreq) {
 			if (context.getConfiguration().get(KEYWORD, KEYWORD_DEFAULT_VALUE).equals(term.toString())) {
 				_log.info("Emiting: " + term.toString() + " => " + stripeFreq);
 			} else {
@@ -143,7 +147,7 @@ public class StripesApproach extends Configured implements Tool {
 			}
 			emitFrequencies(term, stripeFreq, context);
 		}
-		
+
 		private void sumKeyValues(Text term, StripeWritable stripe, StripeWritable stripeFreq) {
 			for (String word : stripe.getStripe().keySet()) {
 				if (stripeFreq.containsKey(word.toString())) {
@@ -151,7 +155,11 @@ public class StripesApproach extends Configured implements Tool {
 				} else {
 					stripeFreq.add(term.toString(), word, stripe.get(word));
 				}
-				stripeFreq.add(term.toString(), TOTAL, ((stripeFreq.get(TOTAL) == null || stripeFreq.get(TOTAL) == 0)? stripe.get(word) : (stripeFreq.get(TOTAL) + stripe.get(word)) ));
+				stripeFreq.add(
+						term.toString(),
+						TOTAL,
+						((stripeFreq.get(TOTAL) == null || stripeFreq.get(TOTAL) == 0) ? stripe.get(word) : (stripeFreq
+								.get(TOTAL) + stripe.get(word))));
 			}
 		}
 
@@ -184,12 +192,10 @@ public class StripesApproach extends Configured implements Tool {
 
 		Job job = new Job(conf, "Coursework 1 - Stripes Approach");
 		job.setInputFormatClass(ParagrapghInputFormat.class);
-		
-		if (args.length == 4) {
-			job.getConfiguration().set(KEYWORD, args[2]);
-			job.getConfiguration().set(NEIGHBOURS, args[3]);
-		}
 		job.setJarByClass(StripesApproach.class);
+
+		job.getConfiguration().set(KEYWORD, KEYWORD_DEFAULT_VALUE);
+		job.getConfiguration().set(NEIGHBOURS, NEIGHBOURS_DEFAULT_VALUE);
 
 		job.setMapperClass(MapClass.class);
 		job.setCombinerClass(Combine.class);
@@ -197,6 +203,28 @@ public class StripesApproach extends Configured implements Tool {
 
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(StripeWritable.class);
+
+		List<String> other_args = new ArrayList<String>();
+		for (int i = 0; i < args.length; ++i) {
+			try {
+				if (REDUCER_PARAM.equals(args[i])) {
+					job.setNumReduceTasks(Integer.parseInt(args[++i]));
+				} else {
+					other_args.add(args[i]);
+				}
+			} catch (NumberFormatException except) {
+				System.out.println("ERROR: Integer expected instead of " + args[i]);
+				return printUsage();
+			} catch (ArrayIndexOutOfBoundsException except) {
+				System.out.println("ERROR: Required parameter missing from " + args[i - 1]);
+				return printUsage();
+			}
+		}
+		// Make sure there are exactly 2 parameters left.
+		if (other_args.size() != 2) {
+			System.out.println("ERROR: Wrong number of parameters: " + other_args.size() + " instead of 2.");
+			return printUsage();
+		}
 
 		Path in = new Path(args[0]);
 		FileInputFormat.setInputPaths(job, in);
@@ -210,10 +238,16 @@ public class StripesApproach extends Configured implements Tool {
 		return 0;
 	}
 
+	private static int printUsage() {
+		System.out.println("stripesApproach [-r <reduces>] <input> <output>");
+		ToolRunner.printGenericCommandUsage(System.out);
+		return -1;
+	}
+
 	public static void main(String[] args) throws Exception {
-//		String[] parameters = { "assets/mlk_speech/input/I_have_a_dream2.txt", "assets/mlk_speech/output", "for", "1" };
-//		String[] parameters = { "assets/mlk_speech/input", "assets/mlk_speech/output", "for", "1" };
-		String[] parameters = { "assets/jane_austen/input", "assets/jane_austen/output", "for", "1" };
+		// String[] parameters = { "assets/mlk_speech/input/I_have_a_dream2.txt", "assets/mlk_speech/output" };
+		// String[] parameters = { "assets/mlk_speech/input", "assets/mlk_speech/output" };
+		String[] parameters = { "assets/jane_austen/input", "assets/jane_austen/output"};
 		if (args != null && (args.length == 2 || args.length == 3)) {
 			parameters = args;
 		}
