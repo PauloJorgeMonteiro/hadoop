@@ -92,7 +92,7 @@ public class PageRank extends Configured implements Tool {
 				_log.debug("Converging: " + node);
 			}
 			
-			convergePageRank();
+//			convergePageRank();
 			
 			emitPageRank(context);
 //			for (Text key : nodesMap.keySet()) {
@@ -131,6 +131,7 @@ public class PageRank extends Configured implements Tool {
 		}
 
 		private void emitPageRank(Context context) throws IOException, InterruptedException {
+			_log.debug("Creating priority queue...");
 			priorityQueue.addAll(nodesMap2);
 			while (!priorityQueue.isEmpty()) {
 				Node node = priorityQueue.poll();
@@ -151,14 +152,10 @@ public class PageRank extends Configured implements Tool {
 		job.setJarByClass(PageRank.class);
 
 		job.setMapperClass(MapClass.class);
-		// job.setCombinerClass(Combiner.class);
 		job.setReducerClass(Reduce.class);
 
 		job.setMapOutputKeyClass(Text.class);
 		job.setMapOutputValueClass(NodeWritable.class);
-		// job.setPartitionerClass(NodePartitioner.class);
-		// job.setSortComparatorClass(NodeSortComparator.class);
-		// job.setGroupingComparatorClass(NodeGroupingComparator.class);
 
 		Path in = new Path(args[0]);
 		FileInputFormat.setInputPaths(job, in);
@@ -176,8 +173,8 @@ public class PageRank extends Configured implements Tool {
 //		 String[] parameters = { "assets/pagerank/input/pagerank02.txt", "assets/pagerank/output" };
 //		String[] parameters = { "assets/pagerank/input/pagerank03.txt", "assets/pagerank/output" };
 //		String[] parameters = { "assets/pagerank/input/pagerank04.txt", "assets/pagerank/output" };
-		String[] parameters = { "assets/pagerank/input/pagerank05.txt", "assets/pagerank/output" };
-//		 String[] parameters = { "assets/epinions_social_network/input", "assets/epinions_social_network/output" };
+//		String[] parameters = { "assets/pagerank/input/pagerank05.txt", "assets/pagerank/output" };
+		 String[] parameters = { "assets/epinions_social_network/input", "assets/epinions_social_network/output" };
 		if (args != null && args.length == 2) {
 			parameters = args;
 		}
