@@ -1,17 +1,16 @@
 package com.hadoop.coursework2;
 
-import static com.hadoop.coursework2.model.NodeWritable.PRECISION;
 import static com.hadoop.coursework2.util.MultiLineRecordReader.SEMICOLON;
 import static com.hadoop.coursework2.util.MultiLineRecordReader.TAB;
 import static com.hadoop.coursework2.util.MultiLineRecordReader.WITH_VALUE;
 
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Queue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -29,6 +28,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Logger;
 
+import com.hadoop.coursework2.model.Node;
 import com.hadoop.coursework2.model.NodeWritable;
 import com.hadoop.coursework2.util.MultiLineInputFormat;
 
@@ -60,11 +60,13 @@ public class PageRank extends Configured implements Tool {
 	}
 
 	public static class Reduce extends Reducer<Text, NodeWritable, Text, DoubleWritable> {
-		private static final Double DAMPING_FACTOR = new Double(0.85);
 
 		private static Logger _log = Logger.getLogger(Reduce.class.getName());
-		private Map<Text, List<NodeWritable>> nodesMap = new HashMap<>();
+		private Map<Text, Node> nodesMap = new HashMap<>();
+		private List<Node> nodesMap2 = new ArrayList<>();
+		private Text key = new Text();
 		private DoubleWritable value = new DoubleWritable(0);
+		private Queue<Node> priorityQueue = new PriorityQueue<>();
 		private Integer totalNodes = 0;
 
 		public void reduce(Text key, Iterable<NodeWritable> values, Context context) throws IOException,
@@ -77,50 +79,66 @@ public class PageRank extends Configured implements Tool {
 				nodes.add(new NodeWritable(node.getFrom(), node.getTo(), node.getTotalLinks(), node
 						.getPreviousPageRank()));
 			}
-			nodesMap.put(new Text(key), nodes);
+//			nodesMap.put(new Text(key), new Node(key.toString(), nodes));
+			nodesMap2.add(new Node(key.toString(), nodes));
 
 		}
 
 		@Override
 		protected void cleanup(Context context) throws IOException, InterruptedException {
-			for (Text key : nodesMap.keySet()) {
-				value.set(calculateCompletePageRank(nodesMap.get(key)));
-				// value.set(calculateSimplePageRank(nodesMap.get(key)));
+			
+			for (Node node : nodesMap2) {
+				node.calculateCompletePageRank(totalNodes);
+				_log.debug("Converging: " + node);
+			}
+			
+			convergePageRank();
+			
+			emitPageRank(context);
+//			for (Text key : nodesMap.keySet()) {
+////				value.set(nodesMap.get(key).calculateCompletePageRank(totalNodes));
+//				value.set(nodesMap.get(key).calculateSimplePageRank(totalNodes));
+//				_log.debug("Emiting: " + key + " => " + value);
+//				context.write(key, value);
+//			}
+		}
+
+		private void convergePageRank() {
+			boolean hasConverged = true;
+			do {
+				hasConverged = true;
+				for (Node node : nodesMap2) {
+					for (Node node2 : nodesMap2) {
+						if (!node.equals(node2)) {
+							for(NodeWritable nw : node2.getNodes()) {
+								if (node.getName().equals(nw.getFrom())) {
+									nw.setPreviousPageRank(node.getRank());
+									node.setPreviousRank(node.getRank());
+								}
+							}
+						}
+					}
+				}
+				
+				for (Node node : nodesMap2) {
+					node.calculateCompletePageRank(totalNodes);
+					 if ( !node.isConverged() ) {
+						 hasConverged = false;
+					 }
+					_log.debug("Converging: " + node);
+				}
+			} while (!hasConverged);
+		}
+
+		private void emitPageRank(Context context) throws IOException, InterruptedException {
+			priorityQueue.addAll(nodesMap2);
+			while (!priorityQueue.isEmpty()) {
+				Node node = priorityQueue.poll();
+				key.set(node.getName());
+				value.set(node.getRank());
 				_log.debug("Emiting: " + key + " => " + value);
 				context.write(key, value);
 			}
-		}
-
-		/**
-		 * Calculates the simplified <b>PageRank</b> for a given node
-		 * 
-		 * @param nodes
-		 * @return PageRank
-		 */
-		private double calculateSimplePageRank(List<NodeWritable> nodes) {
-			double totalPageRank = 0.0;
-			for (NodeWritable node : nodes) {
-				totalPageRank += node.getPageRank();
-			}
-			return BigDecimal.valueOf(totalPageRank)
-					.divide(BigDecimal.valueOf(totalNodes), PRECISION, RoundingMode.HALF_UP).doubleValue();
-		}
-
-		/**
-		 * Calculates the complete <b>PageRank</b> for a given node. <br>
-		 * This method makes use of the damping factor.<br>
-		 * The equations is: <i>(1-d)/N + d (PR(T1)/C(T1) + ... +
-		 * PR(Tn)/C(Tn))</i>. <br>
-		 * As seen in Wikipedia:
-		 * http://en.wikipedia.org/wiki/PageRank#Damping_factor
-		 * 
-		 * @param nodes
-		 * @return PageRank
-		 */
-		public double calculateCompletePageRank(List<NodeWritable> nodes) {
-			double pageRank = (Double.valueOf(1) - DAMPING_FACTOR.doubleValue()) / Double.valueOf(totalNodes);
-			pageRank += (DAMPING_FACTOR * calculateSimplePageRank(nodes));
-			return BigDecimal.valueOf(pageRank).setScale(5, RoundingMode.HALF_UP).doubleValue();
 		}
 
 	}
@@ -155,10 +173,11 @@ public class PageRank extends Configured implements Tool {
 	}
 
 	public static void main(String[] args) throws Exception {
-		// String[] parameters = { "assets/pagerank/input/pagerank02.txt", "assets/pagerank/output" };
-		String[] parameters = { "assets/pagerank/input/pagerank03.txt", "assets/pagerank/output" };
-		// String[] parameters = { "assets/epinions_social_network/input",
-		// "assets/epinions_social_network/output" };
+//		 String[] parameters = { "assets/pagerank/input/pagerank02.txt", "assets/pagerank/output" };
+//		String[] parameters = { "assets/pagerank/input/pagerank03.txt", "assets/pagerank/output" };
+//		String[] parameters = { "assets/pagerank/input/pagerank04.txt", "assets/pagerank/output" };
+		String[] parameters = { "assets/pagerank/input/pagerank05.txt", "assets/pagerank/output" };
+//		 String[] parameters = { "assets/epinions_social_network/input", "assets/epinions_social_network/output" };
 		if (args != null && args.length == 2) {
 			parameters = args;
 		}
