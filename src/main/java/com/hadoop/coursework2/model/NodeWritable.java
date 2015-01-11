@@ -11,8 +11,9 @@ import lombok.Data;
 import org.apache.hadoop.io.WritableComparable;
 
 public @Data class NodeWritable implements WritableComparable<NodeWritable> {
-	
-	public final static Double INITIAL_PAGE_RANK = new Double(1.0);
+
+	public static final Integer PRECISION = 5;
+	public static final Double INITIAL_PAGE_RANK = new Double(1.0);
 
 	private String from;
 	private String to;
@@ -34,20 +35,20 @@ public @Data class NodeWritable implements WritableComparable<NodeWritable> {
 		this.totalLinks = totalLinks;
 	}
 
-	public NodeWritable(String from, String to,  int totalLinks, Double previousPageRank) {
+	public NodeWritable(String from, String to, int totalLinks, Double previousPageRank) {
 		this.from = from;
 		this.to = to;
 		this.totalLinks = totalLinks;
 		this.previousPageRank = previousPageRank;
 	}
-	
-	public Double getPageRank(){
+
+	public Double getPageRank() {
 		if (previousPageRank != 0) {
-			return BigDecimal.valueOf(previousPageRank).divide(BigDecimal.valueOf(totalLinks), 5,
-					RoundingMode.HALF_UP).doubleValue();
+			return BigDecimal.valueOf(previousPageRank)
+					.divide(BigDecimal.valueOf(totalLinks), PRECISION, RoundingMode.HALF_UP).doubleValue();
 		}
-		return BigDecimal.valueOf(INITIAL_PAGE_RANK).divide(BigDecimal.valueOf(totalLinks), 5,
-				RoundingMode.HALF_UP).doubleValue();
+		return BigDecimal.valueOf(INITIAL_PAGE_RANK)
+				.divide(BigDecimal.valueOf(totalLinks), PRECISION, RoundingMode.HALF_UP).doubleValue();
 	}
 
 	@Override
@@ -98,6 +99,5 @@ public @Data class NodeWritable implements WritableComparable<NodeWritable> {
 		result = prime * result + totalLinks;
 		return result;
 	}
-
 
 }
