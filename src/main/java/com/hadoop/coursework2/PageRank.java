@@ -1,5 +1,6 @@
 package com.hadoop.coursework2;
 
+import static com.hadoop.coursework2.model.NodeWritable.PRECISION;
 import static com.hadoop.coursework2.util.MultiLineRecordReader.SEMICOLON;
 import static com.hadoop.coursework2.util.MultiLineRecordReader.TAB;
 import static com.hadoop.coursework2.util.MultiLineRecordReader.WITH_VALUE;
@@ -40,7 +41,6 @@ import com.hadoop.coursework2.util.MultiLineInputFormat;
  */
 public class PageRank extends Configured implements Tool {
 
-
 	public static class MapClass extends Mapper<LongWritable, Text, Text, NodeWritable> {
 
 		private static Logger _log = Logger.getLogger(MapClass.class.getName());
@@ -60,8 +60,8 @@ public class PageRank extends Configured implements Tool {
 	}
 
 	public static class Reduce extends Reducer<Text, NodeWritable, Text, DoubleWritable> {
-		private final static BigDecimal DAMPING_FACTOR = new BigDecimal(0.85);
-		
+		private static final Double DAMPING_FACTOR = new Double(0.85);
+
 		private static Logger _log = Logger.getLogger(Reduce.class.getName());
 		private Map<Text, List<NodeWritable>> nodesMap = new HashMap<>();
 		private DoubleWritable value = new DoubleWritable(0);
@@ -71,10 +71,11 @@ public class PageRank extends Configured implements Tool {
 				InterruptedException {
 
 			totalNodes++;
-			
+
 			List<NodeWritable> nodes = new ArrayList<>();
 			for (NodeWritable node : values) {
-				nodes.add(new NodeWritable(node.getFrom(), node.getTo(), node.getTotalLinks(), node.getPreviousPageRank()));
+				nodes.add(new NodeWritable(node.getFrom(), node.getTo(), node.getTotalLinks(), node
+						.getPreviousPageRank()));
 			}
 			nodesMap.put(new Text(key), nodes);
 
@@ -84,6 +85,7 @@ public class PageRank extends Configured implements Tool {
 		protected void cleanup(Context context) throws IOException, InterruptedException {
 			for (Text key : nodesMap.keySet()) {
 				value.set(calculateCompletePageRank(nodesMap.get(key)));
+				// value.set(calculateSimplePageRank(nodesMap.get(key)));
 				_log.debug("Emiting: " + key + " => " + value);
 				context.write(key, value);
 			}
@@ -100,28 +102,25 @@ public class PageRank extends Configured implements Tool {
 			for (NodeWritable node : nodes) {
 				totalPageRank += node.getPageRank();
 			}
-			return BigDecimal.valueOf(totalPageRank).divide(BigDecimal.valueOf(totalNodes), 5, RoundingMode.HALF_UP).doubleValue();
+			return BigDecimal.valueOf(totalPageRank)
+					.divide(BigDecimal.valueOf(totalNodes), PRECISION, RoundingMode.HALF_UP).doubleValue();
 		}
-		
+
 		/**
 		 * Calculates the complete <b>PageRank</b> for a given node. <br>
 		 * This method makes use of the damping factor.<br>
-		 * The equations is: <i>(1-d)/N + d (PR(T1)/C(T1) + ... + PR(Tn)/C(Tn))</i>. <br>
-		 * As seen in Wikipedia: http://en.wikipedia.org/wiki/PageRank#Damping_factor
+		 * The equations is: <i>(1-d)/N + d (PR(T1)/C(T1) + ... +
+		 * PR(Tn)/C(Tn))</i>. <br>
+		 * As seen in Wikipedia:
+		 * http://en.wikipedia.org/wiki/PageRank#Damping_factor
 		 * 
 		 * @param nodes
 		 * @return PageRank
 		 */
 		public double calculateCompletePageRank(List<NodeWritable> nodes) {
-			BigDecimal firstPart = BigDecimal.valueOf(1).min(DAMPING_FACTOR).divide(BigDecimal.valueOf(totalNodes), 5, RoundingMode.HALF_UP);
-			
-			double linksPageRank = 0.0;
-			for (NodeWritable node : nodes) {
-				linksPageRank += node.getPageRank();
-			}
-			BigDecimal secondPart = DAMPING_FACTOR.multiply(BigDecimal.valueOf(linksPageRank));
-			
-			return firstPart.add(secondPart).divide(BigDecimal.valueOf(totalNodes), 5, RoundingMode.HALF_UP).doubleValue();
+			double pageRank = (Double.valueOf(1) - DAMPING_FACTOR.doubleValue()) / Double.valueOf(totalNodes);
+			pageRank += (DAMPING_FACTOR * calculateSimplePageRank(nodes));
+			return BigDecimal.valueOf(pageRank).setScale(5, RoundingMode.HALF_UP).doubleValue();
 		}
 
 	}
@@ -134,7 +133,7 @@ public class PageRank extends Configured implements Tool {
 		job.setJarByClass(PageRank.class);
 
 		job.setMapperClass(MapClass.class);
-//		job.setCombinerClass(Combiner.class);
+		// job.setCombinerClass(Combiner.class);
 		job.setReducerClass(Reduce.class);
 
 		job.setMapOutputKeyClass(Text.class);
@@ -156,7 +155,10 @@ public class PageRank extends Configured implements Tool {
 	}
 
 	public static void main(String[] args) throws Exception {
-		String[] parameters = { "assets/pagerank/input/pagerank02.txt", "assets/pagerank/output" };
+		// String[] parameters = { "assets/pagerank/input/pagerank02.txt", "assets/pagerank/output" };
+		String[] parameters = { "assets/pagerank/input/pagerank03.txt", "assets/pagerank/output" };
+		// String[] parameters = { "assets/epinions_social_network/input",
+		// "assets/epinions_social_network/output" };
 		if (args != null && args.length == 2) {
 			parameters = args;
 		}
