@@ -12,7 +12,7 @@ import org.apache.hadoop.io.WritableComparable;
 
 public @Data class NodeWritable implements WritableComparable<NodeWritable> {
 
-	public static final Integer PRECISION = 5;
+	public static final Integer PRECISION = 3;
 	public static final Double INITIAL_PAGE_RANK = new Double(1.0);
 
 	private String from;
@@ -43,12 +43,15 @@ public @Data class NodeWritable implements WritableComparable<NodeWritable> {
 	}
 
 	public Double getPageRank() {
+		Double pageRank = new Double(0.0);
 		if (previousPageRank != 0) {
-			return BigDecimal.valueOf(previousPageRank)
+			pageRank = BigDecimal.valueOf(previousPageRank)
+					.divide(BigDecimal.valueOf(totalLinks), PRECISION, RoundingMode.HALF_UP).doubleValue();
+		} else {
+			pageRank = BigDecimal.valueOf(INITIAL_PAGE_RANK)
 					.divide(BigDecimal.valueOf(totalLinks), PRECISION, RoundingMode.HALF_UP).doubleValue();
 		}
-		return BigDecimal.valueOf(INITIAL_PAGE_RANK)
-				.divide(BigDecimal.valueOf(totalLinks), PRECISION, RoundingMode.HALF_UP).doubleValue();
+		return pageRank;
 	}
 
 	@Override
