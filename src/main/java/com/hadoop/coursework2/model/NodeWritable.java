@@ -12,7 +12,7 @@ import org.apache.hadoop.io.WritableComparable;
 
 public @Data class NodeWritable implements WritableComparable<NodeWritable> {
 
-	public static final Integer PRECISION = 3;
+	public static final Integer PRECISION = 10;
 	public static final Double INITIAL_PAGE_RANK = new Double(1.0);
 
 	private String from;
