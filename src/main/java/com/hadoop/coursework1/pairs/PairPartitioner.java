@@ -21,7 +21,8 @@ public class PairPartitioner extends Partitioner<Pair, IntWritable> {
 
 	@Override
 	public int getPartition(Pair key, IntWritable value, int numReduceTasks) {
-		return key.getTerm().hashCode() % numReduceTasks;
+		// the return value needs to be positive, so we use Math.abs(...)
+		return Math.abs(key.getTerm().hashCode()) % numReduceTasks;
 	}
 
 }
