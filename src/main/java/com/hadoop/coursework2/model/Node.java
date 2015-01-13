@@ -11,7 +11,7 @@ import lombok.Data;
 
 public @Data class Node implements Comparable<Node> {
 
-	private static final Double DAMPING_FACTOR = new Double(0.7);
+	private static final Double DAMPING_FACTOR = new Double(0.85);
 	 
 	private String name;
 	private double rank;
